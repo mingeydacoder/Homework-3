@@ -191,57 +191,61 @@ class MeanVariancePortfolio:
         self.portfolio_weights.fillna(0, inplace=True)
 
     def mv_opt(self, R_n, gamma):
-        Sigma = R_n.cov().values
-        mu = R_n.mean().values
-        n = len(R_n.columns)
+            Sigma = R_n.cov().values
+            mu = R_n.mean().values
+            n = len(R_n.columns)
 
-        with gp.Env(empty=True) as env:
-            env.setParam("OutputFlag", 0)
-            env.setParam("DualReductions", 0)
-            env.start()
-            with gp.Model(env=env, name="portfolio") as model:
-                """
-                TODO: Complete Task 3 Below
-                """
+            with gp.Env(empty=True) as env:
+                env.setParam("OutputFlag", 0)
+                env.setParam("DualReductions", 0)
+                env.start()
+                with gp.Model(env=env, name="portfolio") as model:
+                    """
+                    TODO: Complete Task 3 Below
+                    """
 
-                # Sample Code: Initialize Decision w and the Objective
-                # NOTE: You can modify the following code
-                # Initialize Decision w and the Objective
-                w = model.addMVar(n, name="w", lb=0, ub=1)
-                portfolio_variance = w @ Sigma @ w
-                portfolio_return = mu @ w
-                objective = portfolio_return - gamma * portfolio_variance
-                model.setObjective(objective, gp.GRB.MAXIMIZE)
+                    # Sample Code: Initialize Decision w and the Objective
+                    # NOTE: You can modify the following code
+                    w = model.addMVar(n, name="w", ub=1)
+                    
+                    # Objective: Maximize w.T @ mu - (gamma / 2) * w.T @ Sigma @ w
+                    portfolio_return = mu @ w
+                    portfolio_variance = w @ Sigma @ w
+                    model.setObjective(portfolio_return - (gamma / 2) * portfolio_variance, gp.GRB.MAXIMIZE)
+                    
+                    # Constraint: Sum of weights = 1
+                    model.addConstr(w.sum() == 1, name="sum_weights")
+                    
+                    # Constraint: Weights are non-negative
+                    model.addConstr(w >= 0, name="non_negative")
+                    
+                    """
+                    TODO: Complete Task 3 Above
+                    """
 
-                # Add constraint: sum of weights equals 1
-                model.addConstr(w.sum() == 1, name="sum_weights")
+                    model.optimize()
 
-                """
-                TODO: Complete Task 3 Below
-                """
-                model.optimize()
+                    # Check if the status is INF_OR_UNBD (code 4)
+                    if model.status == gp.GRB.INF_OR_UNBD:
+                        print(
+                            "Model status is INF_OR_UNBD. Reoptimizing with DualReductions set to 0."
+                        )
+                    elif model.status == gp.GRB.INFEASIBLE:
+                        # Handle infeasible model
+                        print("Model is infeasible.")
+                    elif model.status == gp.GRB.INF_OR_UNBD:
+                        # Handle infeasible or unbounded model
+                        print("Model is infeasible or unbounded.")
 
-                # Check if the status is INF_OR_UNBD (code 4)
-                if model.status == gp.GRB.INF_OR_UNBD:
-                    print(
-                        "Model status is INF_OR_UNBD. Reoptimizing with DualReductions set to 0."
-                    )
-                elif model.status == gp.GRB.INFEASIBLE:
-                    # Handle infeasible model
-                    print("Model is infeasible.")
-                elif model.status == gp.GRB.INF_OR_UNBD:
-                    # Handle infeasible or unbounded model
-                    print("Model is infeasible or unbounded.")
+                    if model.status == gp.GRB.OPTIMAL or model.status == gp.GRB.SUBOPTIMAL:
+                        # Extract the solution
+                        solution = []
+                        for i in range(n):
+                            var = model.getVarByName(f"w[{i}]")
+                            # print(f"w {i} = {var.X}")
+                            solution.append(var.X)
 
-                if model.status == gp.GRB.OPTIMAL or model.status == gp.GRB.SUBOPTIMAL:
-                    # Extract the solution
-                    solution = []
-                    for i in range(n):
-                        var = model.getVarByName(f"w[{i}]")
-                        # print(f"w {i} = {var.X}")
-                        solution.append(var.X)
-
-        return solution
+            return solution
 
     def calculate_portfolio_returns(self):
         # Ensure weights are calculated
