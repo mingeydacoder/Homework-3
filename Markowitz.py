@@ -213,10 +213,8 @@ class MeanVariancePortfolio:
                     portfolio_variance = w @ Sigma @ w
                     model.setObjective(portfolio_return - (gamma / 2) * portfolio_variance, gp.GRB.MAXIMIZE)
                     
-                    # Constraint: Sum of weights = 1
+                    # Constraint
                     model.addConstr(w.sum() == 1, name="sum_weights")
-                    
-                    # Constraint: Weights are non-negative
                     model.addConstr(w >= 0, name="non_negative")
                     
                     """
