@@ -121,13 +121,23 @@ class RiskParityPortfolio:
         """
         TODO: Complete Task 2 Below
         """
+        # Calculate the rolling volatility 
+        shifted_returns = df_returns[assets].shift(1)
+        rolling_vol = shifted_returns[assets].rolling(window=self.lookback).std()
 
+        inv_vol = 1 / rolling_vol
+
+
+        normalized_inv_vol = inv_vol.div(inv_vol.sum(axis=1), axis=0)
+
+        self.portfolio_weights[assets] = normalized_inv_vol
         """
         TODO: Complete Task 2 Above
         """
 
         self.portfolio_weights.ffill(inplace=True)
         self.portfolio_weights.fillna(0, inplace=True)
+        self.portfolio_weights[0:51] = 0
 
     def calculate_portfolio_returns(self):
         # Ensure weights are calculated
@@ -196,8 +206,15 @@ class MeanVariancePortfolio:
 
                 # Sample Code: Initialize Decision w and the Objective
                 # NOTE: You can modify the following code
-                w = model.addMVar(n, name="w", ub=1)
-                model.setObjective(w.sum(), gp.GRB.MAXIMIZE)
+                # Initialize Decision w and the Objective
+                w = model.addMVar(n, name="w", lb=0, ub=1)
+                portfolio_variance = w @ Sigma @ w
+                portfolio_return = mu @ w
+                objective = portfolio_return - gamma * portfolio_variance
+                model.setObjective(objective, gp.GRB.MAXIMIZE)
+
+                # Add constraint: sum of weights equals 1
+                model.addConstr(w.sum() == 1, name="sum_weights")
 
                 """
                 TODO: Complete Task 3 Below
